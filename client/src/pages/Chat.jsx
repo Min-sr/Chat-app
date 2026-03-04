@@ -5,10 +5,10 @@ import { Send, Phone, Video, MoreVertical, Smile } from 'lucide-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
+import CallManager from '../components/CallManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// ── Avatar nhỏ dùng trong chat ──────────────────────────────
 function Avatar({ username = '', size = 8 }) {
   const initials = username.slice(0, 2).toUpperCase();
   const COLORS = ['bg-violet-500','bg-blue-500','bg-emerald-500','bg-pink-500','bg-amber-500','bg-cyan-500','bg-rose-500'];
@@ -24,7 +24,6 @@ export default function Chat() {
   const { user } = useAuthStore();
   const { socket, isConnected } = useSocket();
 
-  // ── State ─────────────────────────────────────────────────
   const [activeConversation, setActiveConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -36,45 +35,33 @@ export default function Chat() {
   const typingTimer = useRef(null);
   const inputRef = useRef(null);
 
-  // ── Load messages khi chọn conversation ─────────────────
   useEffect(() => {
     if (!activeConversation) return;
     loadMessages(activeConversation._id);
-
-    // Join room
     if (socket) {
       socket.emit('join_conversation', { conversationId: activeConversation._id });
     }
-
     return () => {
-      if (socket) {
-        socket.emit('leave_conversation', { conversationId: activeConversation._id });
-      }
+      if (socket) socket.emit('leave_conversation', { conversationId: activeConversation._id });
     };
   }, [activeConversation?._id]);
 
-  // ── Socket events ─────────────────────────────────────────
   useEffect(() => {
     if (!socket) return;
-
     socket.on('new_message', ({ message, conversationId }) => {
       if (conversationId === activeConversation?._id) {
         setMessages(prev => [...prev, message]);
-        // Đánh dấu đã xem
         socket.emit('message_read', { messageId: message._id, conversationId });
       }
     });
-
     socket.on('user_typing', ({ userId, conversationId }) => {
       if (conversationId === activeConversation?._id && userId !== user?._id) {
         setTypingUsers(prev => new Set([...prev, userId]));
       }
     });
-
     socket.on('user_stop_typing', ({ userId }) => {
       setTypingUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
     });
-
     return () => {
       socket.off('new_message');
       socket.off('user_typing');
@@ -82,7 +69,6 @@ export default function Chat() {
     };
   }, [socket, activeConversation?._id]);
 
-  // ── Auto scroll xuống tin nhắn mới nhất ─────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingUsers]);
@@ -102,11 +88,8 @@ export default function Chat() {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputMessage.trim() || !activeConversation || !socket) return;
-
     const content = inputMessage.trim();
     setInputMessage('');
-
-    // Optimistic update
     const tempMsg = {
       _id: `temp-${Date.now()}`,
       content,
@@ -115,22 +98,13 @@ export default function Chat() {
       status: 'sending',
     };
     setMessages(prev => [...prev, tempMsg]);
-
-    // Gửi qua socket
-    socket.emit('send_message', {
-      conversationId: activeConversation._id,
-      content,
-      type: 'text',
-    });
-
-    // Stop typing
+    socket.emit('send_message', { conversationId: activeConversation._id, content, type: 'text' });
     stopTypingSignal();
   };
 
   const handleTyping = (e) => {
     setInputMessage(e.target.value);
     if (!socket || !activeConversation) return;
-
     if (!isTyping) {
       setIsTyping(true);
       socket.emit('typing_start', { conversationId: activeConversation._id });
@@ -154,7 +128,6 @@ export default function Chat() {
     }
   };
 
-  // ── Helper: lấy tên người còn lại trong DM ──────────────
   const getOtherUser = (conv) => {
     if (!conv) return null;
     if (conv.isGroup) return { username: conv.name || 'Nhóm' };
@@ -163,15 +136,13 @@ export default function Chat() {
 
   const otherUser = getOtherUser(activeConversation);
 
-  const isMyMessage = (msg) =>
-    (msg.sender?._id || msg.sender) === user?._id;
+  const isMyMessage = (msg) => (msg.sender?._id || msg.sender) === user?._id;
 
   const formatMsgTime = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // ── Group messages theo người gửi liên tiếp ─────────────
   const groupedMessages = messages.reduce((acc, msg, i) => {
     const prev = messages[i - 1];
     const isSameSender = prev && (prev.sender?._id || prev.sender) === (msg.sender?._id || msg.sender);
@@ -183,41 +154,41 @@ export default function Chat() {
   return (
     <div className="h-screen flex bg-gray-100 overflow-hidden">
 
-      {/* ── Sidebar ── */}
+      {/* Sidebar */}
       <Sidebar
-        onSelectConversation={(conv) => {
-          setActiveConversation(conv);
-          setMessages([]);
-        }}
+        onSelectConversation={(conv) => { setActiveConversation(conv); setMessages([]); }}
         activeConversationId={activeConversation?._id}
         socket={socket}
       />
 
-      {/* ── Chat Area ── */}
+      {/* Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {activeConversation ? (
           <>
-            {/* Header conversation */}
+            {/* Header */}
             <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <Avatar username={otherUser?.username || '?'} size={10} />
                 <div>
                   <p className="font-semibold text-gray-800">{otherUser?.username}</p>
-                  <p className="text-xs text-gray-400">
-                    {isConnected ? (
-                      <span className="text-green-500">● Online</span>
-                    ) : (
-                      <span className="text-gray-400">● Offline</span>
-                    )}
-                  </p>
+                  <p className="text-xs text-green-500">● Online</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition" title="Gọi thoại">
+                {/* ── Nút gọi thoại ── */}
+                <button
+                  onClick={() => window.__startCall?.('audio')}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"
+                  title="Gọi thoại"
+                >
                   <Phone className="w-5 h-5" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition" title="Video call">
+                {/* ── Nút video call ── */}
+                <button
+                  onClick={() => window.__startCall?.('video')}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"
+                  title="Video call"
+                >
                   <Video className="w-5 h-5" />
                 </button>
                 <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition">
@@ -251,37 +222,25 @@ export default function Chat() {
                       key={msg._id}
                       className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : 'flex-row'} ${msg.isGrouped ? 'mt-0.5' : 'mt-3'}`}
                     >
-                      {/* Avatar phía trái (người khác) */}
                       {!mine && (
                         <div className="w-8 flex-shrink-0">
                           {msg.showAvatar && <Avatar username={msg.sender?.username || '?'} size={8} />}
                         </div>
                       )}
-
                       <div className={`max-w-[65%] flex flex-col ${mine ? 'items-end' : 'items-start'}`}>
-                        {/* Tên người gửi (nhóm chat) */}
                         {!mine && msg.showAvatar && activeConversation?.isGroup && (
                           <p className="text-xs text-gray-500 mb-1 px-1">{msg.sender?.username}</p>
                         )}
-
-                        {/* Bubble */}
                         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed
-                          ${mine
-                            ? 'bg-blue-600 text-white rounded-br-md'
-                            : 'bg-white text-gray-800 shadow-sm rounded-bl-md'
-                          }
+                          ${mine ? 'bg-blue-600 text-white rounded-br-md' : 'bg-white text-gray-800 shadow-sm rounded-bl-md'}
                           ${msg.status === 'sending' ? 'opacity-70' : ''}`}
                         >
                           {msg.content}
                         </div>
-
-                        {/* Timestamp */}
                         {msg.showAvatar && (
                           <p className="text-[10px] text-gray-400 mt-1 px-1">
                             {formatMsgTime(msg.createdAt)}
-                            {mine && msg.status !== 'sending' && (
-                              <span className="ml-1 text-blue-400">✓✓</span>
-                            )}
+                            {mine && msg.status !== 'sending' && <span className="ml-1 text-blue-400">✓✓</span>}
                           </p>
                         )}
                       </div>
@@ -290,22 +249,16 @@ export default function Chat() {
                 })
               )}
 
-              {/* Typing indicator */}
               {typingUsers.size > 0 && (
                 <div className="flex items-end gap-2 mt-3">
                   <div className="w-8 flex-shrink-0" />
                   <div className="bg-white rounded-2xl rounded-bl-md px-4 py-3 shadow-sm flex gap-1 items-center">
                     {[0, 1, 2].map(i => (
-                      <span
-                        key={i}
-                        className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                        style={{ animationDelay: `${i * 0.15}s` }}
-                      />
+                      <span key={i} className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
                     ))}
                   </div>
                 </div>
               )}
-
               <div ref={messagesEndRef} />
             </div>
 
@@ -323,14 +276,12 @@ export default function Chat() {
                   onKeyDown={handleKeyDown}
                   placeholder="Nhập tin nhắn... (Enter để gửi)"
                   className="flex-1 px-4 py-2.5 rounded-xl bg-gray-100 border border-transparent
-                    focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none
-                    text-sm transition"
+                    focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 outline-none text-sm transition"
                 />
                 <button
                   type="submit"
                   disabled={!inputMessage.trim()}
-                  className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition
-                    disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                  className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -338,7 +289,6 @@ export default function Chat() {
             </div>
           </>
         ) : (
-          /* ── Màn hình chờ khi chưa chọn conversation ── */
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400 select-none">
             <div className="text-7xl mb-4">💬</div>
             <p className="text-xl font-semibold text-gray-600">Chào mừng, {user?.username}!</p>
@@ -354,6 +304,13 @@ export default function Chat() {
           </div>
         )}
       </div>
+
+      {/* ── CallManager: xử lý toàn bộ WebRTC ── */}
+      <CallManager
+        socket={socket}
+        currentUser={user}
+        otherUser={otherUser}
+      />
     </div>
   );
 }

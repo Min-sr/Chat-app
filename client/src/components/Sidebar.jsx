@@ -211,7 +211,7 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
 
   const sendFriendRequest = async (userId) => {
     try {
-      await axios.post(`${API_URL}/friends/request`, { recipientId: userId });
+      await axios.post(`${API_URL}/friends/request/${userId}`);
       setSentRequests(prev => new Set([...prev, userId]));
       toast.success('Đã gửi lời mời kết bạn!');
     } catch (err) {
@@ -221,7 +221,7 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
 
   const acceptRequest = async (requestId) => {
     try {
-      await axios.put(`${API_URL}/friends/accept/${requestId}`);
+      await axios.post(`${API_URL}/friends/accept/${requestId}`);
       setRequests(prev => prev.filter(r => r._id !== requestId));
       toast.success('Đã kết bạn! 🎉');
       fetchFriends();
@@ -232,7 +232,7 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
 
   const declineRequest = async (requestId) => {
     try {
-      await axios.put(`${API_URL}/friends/reject/${requestId}`);
+      await axios.post(`${API_URL}/friends/reject/${requestId}`);
       setRequests(prev => prev.filter(r => r._id !== requestId));
       toast('Đã từ chối lời mời');
     } catch { }
