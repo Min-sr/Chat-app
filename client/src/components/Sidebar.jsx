@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Search, UserPlus, Users, Check, X, MessageCircle, LogOut,
+  Search, UserPlus, Users, Check, X, MessageCircle, 
   MessageSquare, Zap, Archive, BarChart, Grid, CreditCard, Settings, Bell
 } from 'lucide-react';
 import axios from 'axios';
@@ -9,7 +9,6 @@ import { useAuthStore } from '../store/authStore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// ── Avatar ──────────────────────────────────────────────────
 function Avatar({ username = '', size = 'md', online }) {
   const initials = username.slice(0, 2).toUpperCase();
   const COLORS = ['bg-violet-500','bg-blue-500','bg-emerald-500','bg-pink-500','bg-amber-500','bg-cyan-500','bg-rose-500'];
@@ -28,7 +27,6 @@ function Avatar({ username = '', size = 'md', online }) {
   );
 }
 
-// ── Tab Button ───────────────────────────────────────────────
 function Tab({ label, active, badge, onClick }) {
   return (
     <button
@@ -40,21 +38,20 @@ function Tab({ label, active, badge, onClick }) {
       {badge > 0 && (
         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none
           ${active ? 'bg-white/25 text-white' : 'bg-red-500 text-white'}`}>
-          {badge}
+          {badge > 99 ? '99+' : badge}
         </span>
       )}
     </button>
   );
 }
 
-// ── Icon Bar (thanh đen bên trái) ────────────────────────────
-function IconBar({ activePanel, onPanelChange, user, logout }) {
+function IconBar({ activePanel, onPanelChange, user, logout, requestCount }) {
   const topMenu = [
-    { icon: Users,         label: 'Bạn bè', panel: 'friends' },
-    { icon: Zap,           label: 'Engage', panel: null },
-    { icon: Archive,       label: 'Archives', panel: null },
-    { icon: BarChart,      label: 'Reports', panel: null },
-    { icon: Grid,          label: 'Apps', panel: null },
+    { icon: Users,   label: 'Bạn bè',   panel: 'friends' },
+    { icon: Zap,     label: 'Engage',   panel: null },
+    { icon: Archive, label: 'Archives', panel: null },
+    { icon: BarChart,label: 'Reports',  panel: null },
+    { icon: Grid,    label: 'Apps',     panel: null },
   ];
   const bottomMenu = [
     { icon: CreditCard, label: 'Billing' },
@@ -64,17 +61,23 @@ function IconBar({ activePanel, onPanelChange, user, logout }) {
 
   return (
     <div className="h-screen w-16 bg-gray-900 flex flex-col items-center py-4 justify-between flex-shrink-0 border-r border-gray-800">
-      {/* Logo */}
       <div className="flex flex-col items-center gap-6 w-full">
-        <button
-          onClick={() => onPanelChange('chat')}
-          className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-all ${activePanel === 'chat' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-blue-600'}`}
-          title="Tin nhắn"
-        >
-          <MessageSquare className="w-5 h-5 text-white" />
-        </button>
+        {/* Chat icon với badge lời mời */}
+        <div className="relative">
+          <button
+            onClick={() => onPanelChange('chat')}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2 transition-all ${activePanel === 'chat' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-blue-600'}`}
+            title="Tin nhắn"
+          >
+            <MessageSquare className="w-5 h-5 text-white" />
+          </button>
+          {requestCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-bold text-white">
+              {requestCount > 9 ? '9+' : requestCount}
+            </span>
+          )}
+        </div>
 
-        {/* Top menu */}
         {topMenu.map((item) => {
           const Icon = item.icon;
           const isActive = item.panel && activePanel === item.panel;
@@ -83,14 +86,10 @@ function IconBar({ activePanel, onPanelChange, user, logout }) {
               <button
                 onClick={() => item.panel && onPanelChange(item.panel)}
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
-                  ${isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
+                  ${isActive ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
               >
                 <Icon className="w-5 h-5" />
               </button>
-              {/* Tooltip */}
               <span className="absolute left-14 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap z-50 shadow-lg">
                 {item.label}
               </span>
@@ -99,7 +98,6 @@ function IconBar({ activePanel, onPanelChange, user, logout }) {
         })}
       </div>
 
-      {/* Bottom menu */}
       <div className="flex flex-col items-center gap-4 w-full px-2">
         {bottomMenu.map((item) => {
           const Icon = item.icon;
@@ -114,8 +112,6 @@ function IconBar({ activePanel, onPanelChange, user, logout }) {
             </div>
           );
         })}
-
-        {/* User avatar */}
         <div className="group relative flex justify-center w-full">
           <button
             onClick={logout}
@@ -133,17 +129,17 @@ function IconBar({ activePanel, onPanelChange, user, logout }) {
   );
 }
 
-// ── Chat Panel (sidebar phải) ────────────────────────────────
-function ChatPanel({ onSelectConversation, activeConversationId, socket, user }) {
-  const [tab, setTab] = useState('chats');
-  const [searchQuery, setSearchQuery] = useState('');
+function ChatPanel({ onSelectConversation, activeConversationId, socket, user, onRequestCountChange }) {
+  const [tab, setTab]                   = useState('chats');
+  const [searchQuery, setSearchQuery]   = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [searching, setSearching]       = useState(false);
   const [conversations, setConversations] = useState([]);
-  const [friends, setFriends] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState(new Set());
+  const [friends, setFriends]           = useState([]);
+  const [requests, setRequests]         = useState([]);
+  const [onlineUsers, setOnlineUsers]   = useState(new Set());
   const [sentRequests, setSentRequests] = useState(new Set());
+  const [unreadCounts, setUnreadCounts] = useState({}); // { conversationId: count }
   const searchTimer = useRef(null);
 
   useEffect(() => {
@@ -152,29 +148,78 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
     fetchFriendRequests();
   }, []);
 
+  // Báo số lời mời lên parent (IconBar badge)
+  useEffect(() => {
+    onRequestCountChange?.(requests.length);
+  }, [requests.length]);
+
+  // Socket events
   useEffect(() => {
     if (!socket) return;
-    socket.on('user_online', ({ userId }) =>
-      setOnlineUsers(prev => new Set([...prev, userId]))
-    );
-    socket.on('user_offline', ({ userId }) =>
-      setOnlineUsers(prev => { const n = new Set(prev); n.delete(userId); return n; })
-    );
-    socket.on('new_message', ({ message, conversationId }) => {
+
+    // Online/Offline — dùng đúng event name từ presenceHandler
+    const handleOnline = ({ userId }) => {
+      setOnlineUsers(prev => new Set([...prev, userId]));
+    };
+    const handleOffline = ({ userId }) => {
+      setOnlineUsers(prev => { const n = new Set(prev); n.delete(userId); return n; });
+    };
+
+    // Tin nhắn mới — cập nhật sidebar real-time
+    const handleNewMessage = ({ message, conversationId }) => {
       setConversations(prev =>
         prev.map(c => c._id === conversationId
           ? { ...c, lastMessage: message, updatedAt: message.createdAt }
           : c
         ).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       );
-    });
-    return () => {
-      socket.off('user_online');
-      socket.off('user_offline');
-      socket.off('new_message');
+      // Tăng unread nếu conversation không đang active
+      if (conversationId !== activeConversationId) {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] || 0) + 1,
+        }));
+      }
     };
-  }, [socket]);
 
+    // Lời mời kết bạn mới — real-time
+    const handleFriendRequest = (data) => {
+      setRequests(prev => {
+        // Tránh duplicate
+        if (prev.some(r => r._id === data._id)) return prev;
+        return [data, ...prev];
+      });
+      toast('📩 Bạn có lời mời kết bạn mới!', { icon: '👋' });
+    };
+
+    // Được chấp nhận kết bạn
+    const handleFriendAccepted = () => {
+      fetchFriends();
+      toast.success('🎉 Một người đã chấp nhận kết bạn!');
+    };
+
+    socket.on('user_online',        handleOnline);
+    socket.on('user_offline',       handleOffline);
+    socket.on('new_message',        handleNewMessage);
+    socket.on('friend_request',     handleFriendRequest);
+    socket.on('friend_accepted',    handleFriendAccepted);
+
+    return () => {
+      socket.off('user_online',     handleOnline);
+      socket.off('user_offline',    handleOffline);
+      socket.off('new_message',     handleNewMessage);
+      socket.off('friend_request',  handleFriendRequest);
+      socket.off('friend_accepted', handleFriendAccepted);
+    };
+  }, [socket, activeConversationId]);
+
+  // Clear unread khi mở conversation
+  const handleSelectConversation = (conv) => {
+    setUnreadCounts(prev => ({ ...prev, [conv._id]: 0 }));
+    onSelectConversation?.(conv);
+  };
+
+  // Search
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
     setSearching(true);
@@ -192,21 +237,21 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
     try {
       const { data } = await axios.get(`${API_URL}/conversations`);
       setConversations(data.data?.conversations || data.data || []);
-    } catch { }
+    } catch {}
   };
 
   const fetchFriends = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/friends`);
       setFriends(data.data?.friends || data.data || []);
-    } catch { }
+    } catch {}
   };
 
   const fetchFriendRequests = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/friends/requests`);
       setRequests(data.data?.requests || data.data || []);
-    } catch { }
+    } catch {}
   };
 
   const sendFriendRequest = async (userId) => {
@@ -225,6 +270,7 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
       setRequests(prev => prev.filter(r => r._id !== requestId));
       toast.success('Đã kết bạn! 🎉');
       fetchFriends();
+      fetchConversations();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Lỗi');
     }
@@ -235,7 +281,7 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
       await axios.post(`${API_URL}/friends/reject/${requestId}`);
       setRequests(prev => prev.filter(r => r._id !== requestId));
       toast('Đã từ chối lời mời');
-    } catch { }
+    } catch {}
   };
 
   const openDirectChat = async (friendId) => {
@@ -243,20 +289,18 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
       const { data } = await axios.post(`${API_URL}/conversations`, { participantId: friendId });
       const conv = data.data?.conversation || data.data;
       await fetchConversations();
-      onSelectConversation?.(conv);
+      handleSelectConversation(conv);
       setTab('chats');
     } catch {
       toast.error('Không thể mở chat');
     }
   };
 
-  const isFriend = (uid) => friends.some(f => (f._id || f) === uid);
-
+  const isFriend  = (uid) => friends.some(f => (f._id || f) === uid);
   const getOtherParticipant = (conv) => {
     if (conv.isGroup) return { username: conv.name || 'Nhóm', _id: conv._id };
     return conv.participants?.find(p => (p._id || p) !== user?._id) || {};
   };
-
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -264,6 +308,8 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
     if (diffH < 24) return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
     return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
   };
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
 
   return (
     <div className="h-full w-72 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
@@ -293,9 +339,9 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
         </div>
         {!searchQuery && (
           <div className="flex gap-1">
-            <Tab label="Tin nhắn" active={tab === 'chats'}   onClick={() => setTab('chats')} />
-            <Tab label="Bạn bè"   active={tab === 'friends'} onClick={() => setTab('friends')} />
-            <Tab label="Lời mời"  active={tab === 'requests'} badge={requests.length} onClick={() => setTab('requests')} />
+            <Tab label="Tin nhắn" active={tab === 'chats'}    badge={totalUnread}      onClick={() => setTab('chats')} />
+            <Tab label="Bạn bè"   active={tab === 'friends'}  onClick={() => setTab('friends')} />
+            <Tab label="Lời mời"  active={tab === 'requests'} badge={requests.length}  onClick={() => setTab('requests')} />
           </div>
         )}
       </div>
@@ -352,28 +398,36 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
                 <p className="text-xs mt-1">Thêm bạn bè và bắt đầu chat!</p>
               </div>
             ) : conversations.map(conv => {
-              const other = getOtherParticipant(conv);
+              const other    = getOtherParticipant(conv);
               const isActive = conv._id === activeConversationId;
+              const unread   = unreadCounts[conv._id] || 0;
               return (
                 <button
                   key={conv._id}
-                  onClick={() => onSelectConversation?.(conv)}
+                  onClick={() => handleSelectConversation(conv)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition text-left
                     ${isActive ? 'bg-blue-50 border border-blue-100' : 'hover:bg-gray-50'}`}
                 >
                   <Avatar username={other.username || '?'} size="lg" online={onlineUsers.has(other._id)} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <p className={`text-sm truncate ${isActive ? 'font-bold text-blue-700' : 'font-semibold text-gray-800'}`}>
+                      <p className={`text-sm truncate ${isActive ? 'font-bold text-blue-700' : unread > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
                         {other.username || conv.name}
                       </p>
                       <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1">
                         {formatTime(conv.updatedAt)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">
-                      {conv.lastMessage?.content || 'Bắt đầu trò chuyện...'}
-                    </p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className={`text-xs truncate ${unread > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                        {conv.lastMessage?.content || 'Bắt đầu trò chuyện...'}
+                      </p>
+                      {unread > 0 && (
+                        <span className="ml-1 flex-shrink-0 w-4 h-4 bg-blue-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
@@ -471,27 +525,26 @@ function ChatPanel({ onSelectConversation, activeConversationId, socket, user })
   );
 }
 
-// ── Main export: cả 2 sidebar gộp lại ───────────────────────
 export default function Sidebar({ onSelectConversation, activeConversationId, socket }) {
   const { user, logout } = useAuthStore();
-  const [activePanel, setActivePanel] = useState('chat');
+  const [activePanel, setActivePanel]   = useState('chat');
+  const [requestCount, setRequestCount] = useState(0);
 
   return (
     <div className="flex h-screen flex-shrink-0">
-      {/* Thanh icon đen */}
       <IconBar
         activePanel={activePanel}
         onPanelChange={setActivePanel}
         user={user}
         logout={logout}
+        requestCount={requestCount}
       />
-
-      {/* Panel chat/friends tùy tab đang chọn */}
       <ChatPanel
         onSelectConversation={onSelectConversation}
         activeConversationId={activeConversationId}
         socket={socket}
         user={user}
+        onRequestCountChange={setRequestCount}
       />
     </div>
   );
