@@ -1,7 +1,9 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/authStore";
-import { MessageSquare } from "lucide-react";
+
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { MessageSquare } from 'lucide-react';
+import toast from 'react-hot-toast';
 import bg from "../assets/bg.png";
 import logo from "../assets/logo.png";
 
@@ -13,6 +15,13 @@ export default function Login() {
 
   const { login, loading } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') {
+      toast.success('Email đã xác thực! Bạn có thể đăng nhập.');
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,4 +151,3 @@ export default function Login() {
     </div>
   );
 }
-

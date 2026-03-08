@@ -26,7 +26,10 @@ export default function Register() {
 
     const { confirmPassword, ...registerData } = formData;
     const success = await register(registerData);
-    if (success) navigate('/chat');
+    if (success) {
+      toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
+      navigate('/login');
+    }
   };
 
   const handleChange = (e) => {

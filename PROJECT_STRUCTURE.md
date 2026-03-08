@@ -24,6 +24,7 @@ chat-app/
 │   │   ├── 📂 config/           # Cấu hình
 │   │   │   ├── database.js      # MongoDB connection
 │   │   │   └── redis.js         # Redis client & cache helpers
+│   │   │   └── email.js         # Redis client & cache helpers
 │   │   │
 │   │   ├── 📂 models/           # Database schemas (Mongoose)
 │   │   │   ├── user.model.js    # User schema + methods
@@ -74,7 +75,8 @@ chat-app/
 │   │   │   └── Chat.jsx        # Main chat interface
 │   │   │
 │   │   ├── 📂 components/      # Reusable components (TBD)
-│   │   │   └── (Future components)
+│   │   │   └── CallManager.jsx
+│   │   │   └── Sidebar.jsx
 │   │   │
 │   │   ├── 📂 hooks/           # Custom React hooks
 │   │   │   └── useSocket.js    # Socket.io connection hook
