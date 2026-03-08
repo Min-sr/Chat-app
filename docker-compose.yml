@@ -46,6 +46,10 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       JWT_EXPIRE: 7d
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USER: ngthmhg1710@gmail.com
+      EMAIL_PASS: napmbxyyzymvyhko  # ← app password mới tạo lại
     depends_on:
       - mongodb
       - redis

@@ -15,14 +15,10 @@ export const useAuthStore = create(
       register: async (userData) => {
         set({ loading: true });
         try {
-          const response = await axios.post(`${API_URL}/auth/register`, userData);
-          const { user, token } = response.data.data;
-          
-          set({ user, token, loading: false });
-          localStorage.setItem('token', token);
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          toast.success('Registration successful!');
+          await axios.post(`${API_URL}/auth/register`, userData);
+
+          set({ loading: false });
+          toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
           return true;
         } catch (error) {
           set({ loading: false });
