@@ -99,7 +99,7 @@ export const register = async (req, res) => {
 
     // Send verification email
     const verifyLink = `http://localhost/api/auth/verify/${verificationToken}`;
-    await sendVerificationEmail(user.email, verifyLink);
+    //await sendVerificationEmail(user.email, verifyLink);
 
     res.status(201).json({
       success: true,
